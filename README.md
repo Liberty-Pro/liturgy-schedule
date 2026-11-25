@@ -7,7 +7,7 @@ Live site: https://liberty-pro.github.io/liturgy-schedule/
 ## Files
 
 - `index.html`: the public schedule.
-- The `plan-*.html` file: the planning page for choosing readings (not linked from the public page).
+- `selections.html`: the planning page for choosing readings (not linked from the public page).
 - `data.js`: every Mass and its options. Edit this to change the base schedule.
 - `selections.js`: the committed choices. Written by the planning page.
 - `resolve.js`: turns choices into the readings shown, including the rules for dependent rows.
