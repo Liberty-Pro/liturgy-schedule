@@ -15,7 +15,7 @@ Live site: https://liberty-pro.github.io/liturgy-schedule/
 ## Recording selections
 
 1. Choose on the planning page. Choices are saved in that browser.
-2. "Send my selections" makes a link carrying the choices to the person who commits.
+2. "Email my selections" makes a link carrying the choices to the person who commits.
 3. That person opens the link, reviews, and presses "Commit to public page". This needs a fine-grained GitHub token limited to this repository with Contents: Read and write, entered once on the planning page.
 
 Commits are made on GitHub, so run `git pull` before editing files by hand. Choices are stored by position: do not reorder a Mass's options in `data.js` after it has a committed choice.
