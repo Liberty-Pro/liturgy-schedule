@@ -65,7 +65,7 @@ h2.mon { margin-top: 26px; }
 
   <details class="panel" id="key-panel">
     <summary>Committing (needs the commit key)</summary>
-    <p style="font-size:14px">Only the person holding the key can change the public schedule. The key is kept in this browser only. Do not save it on a shared computer.</p>
+    <p style="font-size:14px">Only the person holding the key can change the public schedule. The key is kept as a cookie in this browser. Do not save it on a shared computer.</p>
     <input type="password" id="key" autocomplete="off" spellcheck="false" aria-label="Commit key" placeholder="Paste the commit key">
     <div class="row"><button type="button" id="save-key">Use this key</button><button type="button" class="alt" id="forget-key">Forget key</button><span id="key-state" style="font-size:14px"></span></div>
   </details>
@@ -83,7 +83,8 @@ h2.mon { margin-top: 26px; }
 'use strict';
 const API = 'https://api.github.com/repos/Liberty-Pro/liturgy-schedule';
 const FILE = API + '/contents/selections.js';
-const PICKS_STORE = 'sovcLiturgy.picks', KEY_STORE = 'sovcLiturgy.commitKey';
+const PICKS_STORE = 'sovcLiturgy.picks', KEY_COOKIE = 'sovcLiturgyKey';
+const OLD_KEY_STORE = 'sovcLiturgy.commitKey'; /* where the key was kept before it became a cookie */
 const R = window.Readings;
 const MASSES = MONTHS.flatMap(m => m.e).filter(x => x.sl);
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -103,6 +104,18 @@ function read(name) { try { return localStorage.getItem(name); } catch (e) { ret
 function write(name, value) {
   try { value === null ? localStorage.removeItem(name) : localStorage.setItem(name, value); return true; }
   catch (e) { message('This browser is not letting the page save. Send your selections before closing it.'); return false; }
+}
+/* The key is a cookie so that cookie cleaners can be told to keep it. It is limited to this site's folder.
+   Browsers may shorten the lifetime (Brave allows about six months), so each visit renews it. */
+function readKey() {
+  const hit = document.cookie.split('; ').find(c => c.startsWith(KEY_COOKIE + '='));
+  return hit ? decodeURIComponent(hit.slice(KEY_COOKIE.length + 1)) : '';
+}
+/* Pass '' to delete. Returns false if the browser did not do it. */
+function writeKey(value) {
+  document.cookie = KEY_COOKIE + '=' + encodeURIComponent(value) + '; Path=' + location.pathname.replace(/[^/]*$/, '') +
+    '; Max-Age=' + (value ? 34560000 : 0) + '; Secure; SameSite=Strict';
+  return readKey() === value;
 }
 const savePicks = () => write(PICKS_STORE, JSON.stringify(picks));
 const current = x => has(picks, x.d) ? picks[x.d] : (published[x.d] || R.emptyPick(x));
@@ -292,17 +305,20 @@ $('save-key').addEventListener('click', async () => {
   try {
     const live = await fetchPublished(value);
     key = value; published = live.sel;
-    write(KEY_STORE, key); $('key').value = ''; renderList();
-    message('Key saved on this device. GitHub confirms it can read the schedule; write permission is checked when you commit.', true);
+    const kept = writeKey(key); $('key').value = ''; renderList();
+    message(kept ? 'Key saved on this device. GitHub confirms it can read the schedule; write permission is checked when you commit.'
+      : 'This browser did not keep the key. It will work only until this page is closed.', kept);
   } catch (e) { message(e.message + ' The key was not saved.'); }
 });
-$('forget-key').addEventListener('click', () => { key = ''; write(KEY_STORE, null); $('key').value = ''; renderBar(); message('The key was removed from this device.', true); });
+$('forget-key').addEventListener('click', () => { key = ''; writeKey(''); write(OLD_KEY_STORE, null); $('key').value = ''; renderBar(); message('The key was removed from this device.', true); });
 
 /* ---------- start ---------- */
 async function start() {
   published = window.SEL || {};
   try { picks = JSON.parse(read(PICKS_STORE)) || {}; } catch (e) { picks = {}; }
-  key = read(KEY_STORE) || '';
+  const old = read(OLD_KEY_STORE);
+  key = readKey() || old || '';
+  if (key && writeKey(key) && old) write(OLD_KEY_STORE, null);
   if (key) {
     /* The key holder reads GitHub directly, which is current even while the public page is still updating. */
     try { published = (await fetchPublished(key)).sel; }
