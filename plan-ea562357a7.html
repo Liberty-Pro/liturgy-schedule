@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<!-- Limits where this page may send data, since the commit key is kept in this browser. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+<title>Reading Selections: Liturgical Year 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+body { padding-bottom: 150px; }
+.msg { border: 1px solid var(--wait-line); background: var(--wait-bg); color: var(--wait-text); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; }
+.msg.ok { background: var(--done-bg); border-color: currentColor; color: inherit; }
+.pick { padding: 4px 18px 18px; }
+.pick .pn { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+fieldset { border: 0; padding: 0; margin: 14px 0 0; min-width: 0; }
+legend { font-weight: 600; font-size: 14.5px; padding: 0; margin-bottom: 6px; }
+.opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; cursor: pointer; font-size: 15px; overflow-wrap: anywhere; }
+.opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opt input { margin: 3px 0 0; width: 17px; height: 17px; flex: none; accent-color: var(--accent); }
+button { font: inherit; font-weight: 600; font-size: 15px; border-radius: 8px; padding: 10px 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--card); cursor: pointer; }
+button.alt { background: transparent; color: var(--accent); }
+button.link { border: 0; background: none; color: var(--accent); padding: 8px 0 0; font-weight: 500; font-size: 14px; text-decoration: underline; }
+button:disabled { opacity: .45; cursor: default; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.08); z-index: 20; padding: 12px 0; }
+.bar .wrap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bar .count { flex: 1 1 220px; font-size: 14px; }
+@media (max-width: 520px) { .bar .count { flex-basis: 100%; } .bar button { flex: 1 1 0; padding: 10px 6px; font-size: 14px; } }
+textarea, input[type=password] { font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--card); color: inherit; }
+textarea { height: 84px; word-break: break-all; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+details.panel summary { cursor: pointer; font-weight: 600; }
+.tog-row { margin: 0 0 16px; font-size: 14.5px; display: flex; gap: 8px; align-items: center; }
+h2.mon { margin-top: 26px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="mast"><div class="wrap">
+  <p class="parish">Shepherd of the Valley Catholic Church</p>
+  <h1>Reading Selections</h1>
+  <p class="sub">Liturgical Year 2027 · Choose the readings for each Mass that has options</p>
+</div></header>
+
+<main><div class="wrap">
+  <div id="messages" aria-live="polite"></div>
+  <p class="lede">Tap your choice for each Mass. Choices are saved on this device as you go, so you can stop and come back. When you are ready, press <strong>Send my selections</strong>. The public schedule changes only after the selections are committed. <a href="index.html">View the public schedule</a></p>
+
+  <div class="panel" id="send-panel" hidden>
+    <strong>Send this link to the person who commits the selections</strong>
+    <p style="font-size:14px;margin:6px 0 8px">The link carries your choices. If you change anything afterward, send a new one.</p>
+    <textarea id="send-link" readonly aria-label="Link carrying your selections"></textarea>
+    <div class="row"><button type="button" id="share" hidden>Share…</button><button type="button" id="copy">Copy link</button><button type="button" class="alt" id="email">Email it</button><button type="button" class="alt" id="close-send">Close</button></div>
+  </div>
+
+  <label class="tog-row"><input type="checkbox" id="only-open"> Show only Masses that still need a choice</label>
+  <div id="list"></div>
+
+  <details class="panel" id="key-panel">
+    <summary>Committing (needs the commit key)</summary>
+    <p style="font-size:14px">Only the person holding the key can change the public schedule. The key is kept in this browser only. Do not save it on a shared computer.</p>
+    <input type="password" id="key" autocomplete="off" spellcheck="false" aria-label="Commit key" placeholder="Paste the commit key">
+    <div class="row"><button type="button" id="save-key">Use this key</button><button type="button" class="alt" id="forget-key">Forget key</button><span id="key-state" style="font-size:14px"></span></div>
+  </details>
+</div></main>
+
+<div class="bar"><div class="wrap">
+  <div class="count" id="count"></div>
+  <button type="button" class="alt" id="send">Send my selections</button>
+  <button type="button" id="commit" hidden>Commit to public page</button>
+</div></div>
+
+<script src="data.js"></script>
+<script src="resolve.js"></script>
+<script>
+'use strict';
+const API = 'https://api.github.com/repos/Liberty-Pro/liturgy-schedule';
+const FILE = API + '/contents/selections.js';
+const PICKS_STORE = 'sovcLiturgy.picks', KEY_STORE = 'sovcLiturgy.commitKey';
+const R = window.Readings;
+const MASSES = MONTHS.flatMap(m => m.e).filter(x => x.sl);
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const when = d => { const [y, m, n] = d.split('-').map(Number); return `${WD[new Date(Date.UTC(y, m - 1, n)).getUTCDay()]}, ${MO[m - 1]} ${n}`; };
+const label = x => `${when(x.d)}: ${x.f}`;
+
+let published = {};   /* what the public page shows */
+let picks = {};       /* choices made on this device that differ from (or are not yet) published */
+let key = '';
+let busy = false;
+
+/* ---------- storage ---------- */
+function read(name) { try { return localStorage.getItem(name); } catch (e) { return null; } }
+function write(name, value) {
+  try { value === null ? localStorage.removeItem(name) : localStorage.setItem(name, value); return true; }
+  catch (e) { message('This browser is not letting the page save. Send your selections before closing it.'); return false; }
+}
+const savePicks = () => write(PICKS_STORE, JSON.stringify(picks));
+const current = x => has(picks, x.d) ? picks[x.d] : (published[x.d] || R.emptyPick(x));
+const differs = x => has(picks, x.d) && !R.same(x, picks[x.d], published[x.d] || R.emptyPick(x));
+
+function message(text, ok) {
+  const div = document.createElement('div');
+  div.className = 'msg' + (ok ? ' ok' : '');
+  div.textContent = text;
+  $('messages').replaceChildren(div);
+  div.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---------- screen ---------- */
+function status(x) {
+  const p = current(x);
+  if (differs(x)) {
+    if (R.isEmpty(x, p)) return ['pend', 'Cleared, not yet committed'];
+    return R.isComplete(x, p) ? ['pend', 'Chosen, not yet committed'] : ['pend', 'Incomplete'];
+  }
+  return published[x.d] && R.isComplete(x, published[x.d]) ? ['ok', 'On the public page'] : ['pend', 'Needs a choice'];
+}
+function cardInner(x) {
+  const p = R.clean(x, current(x)), vis = R.visible(x, p), [cls, text] = status(x);
+  const groups = x.sl.map(([name, opts, multi], g) => !vis[g] ? '' :
+    `<fieldset><legend>${esc(name)}</legend>${opts.map((o, i) =>
+      `<label class="opt"><input type="${multi ? 'checkbox' : 'radio'}" id="o-${x.d}-${g}-${i}" name="g-${x.d}-${g}" data-d="${x.d}" data-g="${g}" data-i="${i}" ${p[g].includes(i) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</fieldset>`).join('');
+  return `<div class="cel-h"><div class="date"><div class="wd">${when(x.d).slice(0, 3)}</div><div class="dn">${Number(x.d.slice(8))}</div><div class="mo">${MO[Number(x.d.slice(5, 7)) - 1]}</div></div>
+    <div><h3 class="feast">${esc(x.f)}</h3><div class="meta"><span>${esc(x.c)}</span><span class="pill ${cls}">${text}</span></div></div></div>
+    <div class="pick">${x.pn ? `<p class="pn">${esc(x.pn)}</p>` : ''}${groups}
+    ${R.isEmpty(x, p) ? '' : `<button type="button" class="link" data-clear="${x.d}">Clear this Mass</button>`}
+    ${differs(x) && published[x.d] ? `<button type="button" class="link" data-undo="${x.d}" style="margin-left:16px">Go back to the published choice</button>` : ''}</div>`;
+}
+function renderList() {
+  const only = $('only-open').checked;
+  const html = MONTHS.map(m => {
+    const list = m.e.filter(x => x.sl && (!only || !R.isComplete(x, current(x))));
+    return list.length ? `<h2 class="mon">${esc(m.name)}</h2><div class="cards">${list.map(x => `<article class="cel" id="c-${x.d}">${cardInner(x)}</article>`).join('')}</div>` : '';
+  }).join('');
+  $('list').innerHTML = html || '<div class="empty">Every Mass has a choice.</div>';
+  renderBar();
+}
+function renderBar() {
+  const done = MASSES.filter(x => R.isComplete(x, current(x))).length;
+  const c = R.changes(MASSES, picks, published);
+  const waiting = c.set.length + c.remove.length;
+  $('count').innerHTML = `<strong>${done} of ${MASSES.length}</strong> Masses chosen · ${waiting} not yet committed${c.incomplete.length ? ` · ${c.incomplete.length} incomplete` : ''}`;
+  $('send').disabled = !MASSES.some(differs);
+  $('commit').hidden = !key;
+  $('commit').disabled = busy || !waiting;
+  $('key-state').textContent = key ? 'A key is saved on this device.' : 'No key on this device.';
+}
+/* Redraw one card in place so the page does not jump. */
+function refresh(d, focusId) {
+  const x = MASSES.find(m => m.d === d), card = $('c-' + d);
+  if (card) card.innerHTML = cardInner(x);
+  if (focusId && $(focusId)) $(focusId).focus({ preventScroll: true });
+  renderBar();
+}
+
+$('list').addEventListener('change', e => {
+  const t = e.target, d = t.dataset.d;
+  if (!d) return;
+  const x = MASSES.find(m => m.d === d), g = Number(t.dataset.g), i = Number(t.dataset.i);
+  const p = R.clean(x, current(x));
+  p[g] = x.sl[g][2] ? (t.checked ? p[g].concat(i) : p[g].filter(n => n !== i)) : [i];
+  picks[d] = R.clean(x, p);
+  savePicks(); $('send-panel').hidden = true;
+  refresh(d, t.id);
+});
+$('list').addEventListener('click', e => {
+  const clear = e.target.dataset.clear, undo = e.target.dataset.undo;
+  if (clear) { picks[clear] = R.emptyPick(MASSES.find(m => m.d === clear)); }
+  else if (undo) { delete picks[undo]; }
+  else return;
+  savePicks(); $('send-panel').hidden = true;
+  refresh(clear || undo);
+});
+$('only-open').addEventListener('change', renderList);
+
+/* ---------- sending selections as a link ---------- */
+const encode = o => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const decode = s => JSON.parse(atob(s.replace(/-/g, '+').replace(/_/g, '/')));
+
+$('send').addEventListener('click', () => {
+  const out = {};
+  MASSES.filter(differs).forEach(x => { out[x.d] = R.clean(x, picks[x.d]); });
+  $('send-link').value = location.href.split('#')[0] + '#s=' + encode(out);
+  $('share').hidden = !navigator.share;
+  $('send-panel').hidden = false;
+  $('send-panel').scrollIntoView({ block: 'start', behavior: 'smooth' });
+});
+$('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('send-link').value); message('Link copied. Paste it into a text or email.', true); }
+  catch (e) { $('send-link').select(); message('Could not copy automatically. The link is selected: copy it by hand.'); }
+});
+$('share').addEventListener('click', () => {
+  navigator.share({ title: 'Reading selections', url: $('send-link').value }).catch(() => { /* viewer closed the share sheet */ });
+});
+$('email').addEventListener('click', () => {
+  location.href = 'mailto:?subject=' + encodeURIComponent('Reading selections') + '&body=' + encodeURIComponent('Open this link to review the reading selections:\n\n' + $('send-link').value);
+});
+$('close-send').addEventListener('click', () => { $('send-panel').hidden = true; });
+
+/* Load choices that arrived in a link, then remove them from the address so a reload cannot re-apply them. */
+function receive() {
+  if (!location.hash.startsWith('#s=')) return;
+  const raw = location.hash.slice(3);
+  history.replaceState(null, '', location.pathname + location.search);
+  let incoming;
+  try { incoming = decode(raw); if (!incoming || typeof incoming !== 'object') throw new Error(); }
+  catch (e) { message('That link is damaged or cut off. Ask for it to be sent again.'); return; }
+  const found = MASSES.filter(x => has(incoming, x.d));
+  const clash = found.filter(x => differs(x) && !R.same(x, picks[x.d], incoming[x.d]));
+  if (clash.length && !confirm(`This link has different choices from ones saved on this device for:\n\n${clash.map(label).join('\n')}\n\nReplace the saved choices with the ones in the link?`)) {
+    message('The link was not loaded. Your saved choices are unchanged.'); return;
+  }
+  found.forEach(x => { picks[x.d] = R.clean(x, incoming[x.d]); });
+  savePicks(); renderList();
+  message(`Loaded selections for ${found.length} Mass${found.length === 1 ? '' : 'es'} from the link. Review them below.`, true);
+}
+window.addEventListener('hashchange', receive);
+
+/* ---------- committing ---------- */
+async function github(url, token, options) {
+  let res;
+  try {
+    res = await fetch(url, { cache: 'no-store', ...options, headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token } });
+  } catch (e) { throw new Error('Could not reach GitHub. Check the internet connection and try again.'); }
+  if (res.ok) return res.json();
+  const err = new Error(
+    res.status === 401 ? 'GitHub did not accept the key. It may be mistyped or expired.' :
+    res.status === 403 || res.status === 404 ? 'This key is not allowed to change the schedule. It needs Contents: Read and write on liturgy-schedule.' :
+    'GitHub returned an error (' + res.status + '). Try again.');
+  err.status = res.status;
+  throw err;
+}
+async function fetchPublished(token) {
+  const file = await github(FILE + '?ref=main', token);
+  const bytes = Uint8Array.from(atob(file.content.replace(/\s/g, '')), c => c.charCodeAt(0));
+  return { sel: R.parseSel(new TextDecoder().decode(bytes)), sha: file.sha };
+}
+const toBase64 = text => btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(''));
+/* Long "set of readings" options are cut to their name in the confirmation box. */
+const short = o => /readings[^:]*:/.test(o) ? o.split(':')[0] : o;
+const summary = (x, pick) => `${label(x)}\n   ` + R.shown(x, pick).map((chosen, g) => chosen.map(i => short(x.sl[g][1][i])).join('; ')).filter(Boolean).join(' | ');
+
+async function commit(retried) {
+  const live = await fetchPublished(key);
+  published = live.sel;
+  const c = R.changes(MASSES, picks, published);
+  renderList();
+  if (!c.set.length && !c.remove.length) { message('Nothing new to commit: the public page already has these choices.', true); return; }
+  const lines = c.set.map(x => summary(x, picks[x.d]) + (published[x.d] ? '\n   (replaces the published choice)' : ''))
+    .concat(c.remove.map(x => label(x) + '\n   REMOVE the published choice (back to Awaiting Fr.)'));
+  const skipped = c.incomplete.length ? `\n\nNot included because incomplete: ${c.incomplete.map(x => when(x.d)).join(', ')}` : '';
+  if (!confirm(`Commit ${lines.length} change${lines.length === 1 ? '' : 's'} to the public page?\n\n${lines.join('\n\n')}${skipped}`)) return;
+  const next = { ...published };
+  c.set.forEach(x => { next[x.d] = R.shown(x, picks[x.d]); });
+  c.remove.forEach(x => { delete next[x.d]; });
+  const changed = c.set.concat(c.remove);
+  try {
+    await github(FILE, key, { method: 'PUT', body: JSON.stringify({
+      message: 'Reading selections: ' + changed.map(x => when(x.d).slice(5)).join(', '),
+      content: toBase64(R.serializeSel(next)), sha: live.sha, branch: 'main' }) });
+  } catch (e) {
+    /* Someone else committed between our read and write: read again and retry once. */
+    if ((e.status === 409 || e.status === 422) && !retried) return commit(true);
+    throw e;
+  }
+  published = next;
+  changed.forEach(x => { delete picks[x.d]; });
+  savePicks(); renderList();
+  message(`Committed ${changed.length} change${changed.length === 1 ? '' : 's'}. The public page usually updates within a few minutes.`, true);
+}
+$('commit').addEventListener('click', async () => {
+  if (busy) return;
+  busy = true; $('commit').textContent = 'Committing…'; renderBar();
+  try { await commit(false); }
+  catch (e) { message(e.message + ' Nothing was committed.'); }
+  busy = false; $('commit').textContent = 'Commit to public page'; renderBar();
+});
+
+$('save-key').addEventListener('click', async () => {
+  const value = $('key').value.trim();
+  if (!value) { message('Paste the key first.'); return; }
+  try {
+    const live = await fetchPublished(value);
+    key = value; published = live.sel;
+    write(KEY_STORE, key); $('key').value = ''; renderList();
+    message('Key saved on this device. GitHub confirms it can read the schedule; write permission is checked when you commit.', true);
+  } catch (e) { message(e.message + ' The key was not saved.'); }
+});
+$('forget-key').addEventListener('click', () => { key = ''; write(KEY_STORE, null); $('key').value = ''; renderBar(); message('The key was removed from this device.', true); });
+
+/* ---------- start ---------- */
+async function start() {
+  published = window.SEL || {};
+  try { picks = JSON.parse(read(PICKS_STORE)) || {}; } catch (e) { picks = {}; }
+  key = read(KEY_STORE) || '';
+  if (key) {
+    /* The key holder reads GitHub directly, which is current even while the public page is still updating. */
+    try { published = (await fetchPublished(key)).sel; }
+    catch (e) { message(e.message); }
+  }
+  /* Forget saved choices that the public page now matches, so later published changes show through. */
+  MASSES.forEach(x => { if (has(picks, x.d) && !differs(x)) delete picks[x.d]; });
+  savePicks(); renderList(); receive();
+}
+/* The timestamp stops the browser from showing an old copy of the committed choices. */
+const loader = document.createElement('script');
+loader.src = 'selections.js?t=' + Date.now();
+loader.onload = start;
+loader.onerror = () => { message('Could not load the published choices. Reload the page to try again.'); };
+document.head.appendChild(loader);
+</script>
+</body>
+</html>
