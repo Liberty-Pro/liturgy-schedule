@@ -37,7 +37,8 @@ textarea { height: 84px; word-break: break-all; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
 details.panel summary { cursor: pointer; font-weight: 600; }
 .tog-row { margin: 0 0 16px; font-size: 14.5px; display: flex; gap: 8px; align-items: center; }
-h2.mon { margin-top: 26px; }
+h2.mon { margin-top: 8px; }
+#messages > *, #send-panel { scroll-margin-top: 72px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -49,9 +50,11 @@ h2.mon { margin-top: 26px; }
   <p class="sub">Liturgical Year 2027 · Choose the readings for each Mass that has options</p>
 </div></header>
 
+<nav aria-label="Months"><div class="wrap" id="nav"></div></nav>
+
 <main><div class="wrap">
   <div id="messages" aria-live="polite"></div>
-  <p class="lede">Tap your choice for each Mass. Choices are saved on this device as you go, so you can stop and come back. When you are ready, press <strong>Send my selections</strong>. The public schedule changes only after the selections are committed. <a href="index.html">View the public schedule</a></p>
+  <p class="lede">Pick a month above, then tap your choice for each Mass. Sending and committing cover every month. Choices are saved on this device as you go, so you can stop and come back. When you are ready, press <strong>Send my selections</strong>. The public schedule changes only after the selections are committed. <a href="index.html">View the public schedule</a></p>
 
   <div class="panel" id="send-panel" hidden>
     <strong>Send this link to the person who commits the selections</strong>
@@ -149,16 +152,30 @@ function cardInner(x) {
     ${R.isEmpty(x, p) ? '' : `<button type="button" class="link" data-clear="${x.d}">Clear this Mass</button>`}
     ${differs(x) && published[x.d] ? `<button type="button" class="link" data-undo="${x.d}" style="margin-left:16px">Go back to the published choice</button>` : ''}</div>`;
 }
+/* One month shows at a time. The address (#dec, #jan, ...) remembers which one across reloads. */
+let month = null;
+const needs = m => m.e.filter(x => x.sl && !R.isComplete(x, current(x)));
+const fromAddress = () => MONTHS.find(m => m.id === location.hash.slice(1));
+function renderNav() {
+  const nav = $('nav'), left = nav.scrollLeft;
+  nav.innerHTML = MONTHS.map(m => { const n = needs(m).length;
+    return `<a href="#${m.id}" ${m === month ? 'aria-current="page"' : ''}>${esc(m.short)}${n ? ` <span class="dot-n" title="${n} still need a choice">${n}</span>` : ''}</a>`; }).join('');
+  nav.scrollLeft = left;
+}
 function renderList() {
+  /* Open on the month in the address, otherwise the first one with something left to choose. */
+  month = month || fromAddress() || MONTHS.find(m => needs(m).length) || MONTHS[0];
   const only = $('only-open').checked;
-  const html = MONTHS.map(m => {
-    const list = m.e.filter(x => x.sl && (!only || !R.isComplete(x, current(x))));
-    return list.length ? `<h2 class="mon">${esc(m.name)}</h2><div class="cards">${list.map(x => `<article class="cel" id="c-${x.d}">${cardInner(x)}</article>`).join('')}</div>` : '';
-  }).join('');
-  $('list').innerHTML = html || '<div class="empty">Every Mass has a choice.</div>';
+  const all = month.e.filter(x => x.sl), list = only ? needs(month) : all;
+  $('list').innerHTML = `<h2 class="mon">${esc(month.name)}</h2>` + (list.length
+    ? `<div class="cards">${list.map(x => `<article class="cel" id="c-${x.d}">${cardInner(x)}</article>`).join('')}</div>`
+    : `<div class="empty">${all.length ? 'Every Mass in this month has a choice.' : 'No Masses in this month need a selection.'}</div>`);
   renderBar();
+  const act = document.querySelector('nav [aria-current]');
+  if (act) act.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 function renderBar() {
+  renderNav();
   const done = MASSES.filter(x => R.isComplete(x, current(x))).length;
   const c = R.changes(MASSES, picks, published);
   const waiting = c.set.length + c.remove.length;
@@ -234,10 +251,14 @@ function receive() {
     message('The link was not loaded. Your saved choices are unchanged.'); return;
   }
   found.forEach(x => { picks[x.d] = R.clean(x, incoming[x.d]); });
-  savePicks(); renderList();
+  savePicks(); month = MONTHS.find(m => m.e.includes(found[0])) || month; renderList();
   message(`Loaded selections for ${found.length} Mass${found.length === 1 ? '' : 'es'} from the link. Review them below.`, true);
 }
-window.addEventListener('hashchange', receive);
+window.addEventListener('hashchange', () => {
+  const m = fromAddress();
+  if (m) { month = m; renderList(); window.scrollTo(0, 0); }
+  else receive();
+});
 
 /* ---------- committing ---------- */
 async function github(url, token, options) {
